@@ -3,7 +3,7 @@ import { useWorkoutHistory } from '../hooks/useWorkoutHistory'
 import { useExercises } from '../hooks/useExercises'
 
 export default function History() {
-  const { workouts, loading } = useWorkoutHistory()
+  const { workouts, loading, deleteWorkout } = useWorkoutHistory()
   const { exercises } = useExercises()
 
   return (
@@ -26,7 +26,17 @@ export default function History() {
                     day: 'numeric',
                   })}
                 </span>
-                {w.routineName && <span className="text-sm text-zinc-500">{w.routineName}</span>}
+                <div className="flex items-center gap-3">
+                  {w.routineName && <span className="text-sm text-zinc-500">{w.routineName}</span>}
+                  <button
+                    onClick={() => {
+                      if (confirm('Delete this workout? This cannot be undone.')) deleteWorkout(w.id)
+                    }}
+                    className="text-sm text-red-400"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-zinc-500">
                 {w.setCount} sets · {Math.round(w.volume).toLocaleString()} lb volume

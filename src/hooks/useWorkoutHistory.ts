@@ -59,5 +59,11 @@ export function useWorkoutHistory() {
     }
   }, [user])
 
-  return { workouts, loading }
+  async function deleteWorkout(id: string) {
+    const { error } = await supabase.from('workouts').delete().eq('id', id)
+    if (error) return
+    setWorkouts((prev) => prev.filter((w) => w.id !== id))
+  }
+
+  return { workouts, loading, deleteWorkout }
 }

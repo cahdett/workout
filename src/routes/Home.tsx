@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRoutines } from '../hooks/useRoutines'
+import { useActiveWorkout } from '../hooks/useActiveWorkout'
 
 export default function Home() {
   const { user, signOut } = useAuth()
   const { routines, loading } = useRoutines()
+  const { activeWorkout, loading: activeLoading } = useActiveWorkout()
   const navigate = useNavigate()
 
   return (
@@ -18,6 +20,15 @@ export default function Home() {
           Sign out
         </button>
       </div>
+
+      {!activeLoading && activeWorkout && (
+        <button
+          onClick={() => navigate(`/workout/active?workoutId=${activeWorkout.id}`)}
+          className="mb-4 w-full rounded-lg border border-amber-400/40 bg-amber-400/10 py-4 text-lg font-medium text-amber-300"
+        >
+          ⏱ Resume Workout in Progress
+        </button>
+      )}
 
       <button
         onClick={() => navigate('/workout/active')}

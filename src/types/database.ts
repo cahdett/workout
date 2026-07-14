@@ -19,6 +19,7 @@ export interface RoutineExercise {
   order_index: number
   target_sets: number | null
   target_reps: number | null
+  rest_seconds: number | null
 }
 
 export interface RoutineExerciseWithName extends RoutineExercise {

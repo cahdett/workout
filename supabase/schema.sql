@@ -21,7 +21,8 @@ create table if not exists routine_exercises (
   exercise_id uuid not null references exercises(id) on delete cascade,
   order_index int not null default 0,
   target_sets int,
-  target_reps int
+  target_reps int,
+  rest_seconds int
 );
 
 create table if not exists workouts (

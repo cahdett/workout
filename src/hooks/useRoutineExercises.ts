@@ -43,6 +43,11 @@ export function useRoutineExercises(routineId: string | undefined) {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, target_sets: targetSets, target_reps: targetReps } : i)))
   }
 
+  async function updateRestSeconds(id: string, restSeconds: number | null) {
+    await supabase.from('routine_exercises').update({ rest_seconds: restSeconds }).eq('id', id)
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, rest_seconds: restSeconds } : i)))
+  }
+
   async function move(id: string, direction: -1 | 1) {
     const idx = items.findIndex((i) => i.id === id)
     const swapIdx = idx + direction
@@ -55,5 +60,5 @@ export function useRoutineExercises(routineId: string | undefined) {
     )
   }
 
-  return { items, loading, addExercise, removeExercise, updateTargets, move }
+  return { items, loading, addExercise, removeExercise, updateTargets, updateRestSeconds, move }
 }

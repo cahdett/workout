@@ -9,7 +9,7 @@ export default function RoutineEditor() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { routines, renameRoutine } = useRoutines()
-  const { items, loading, addExercise, removeExercise, updateTargets, move } = useRoutineExercises(id)
+  const { items, loading, addExercise, removeExercise, updateTargets, updateRestSeconds, move } = useRoutineExercises(id)
   const { exercises, addExercise: createExercise } = useExercises()
   const [pickerOpen, setPickerOpen] = useState(false)
 
@@ -78,6 +78,17 @@ export default function RoutineEditor() {
                       updateTargets(item.id, item.target_sets, e.target.value ? Number(e.target.value) : null)
                     }
                     className="w-14 rounded bg-zinc-800 px-2 py-1 outline-none"
+                  />
+                </label>
+                <label className="flex items-center gap-1 text-zinc-400">
+                  Rest (s)
+                  <input
+                    type="number"
+                    min={0}
+                    step={5}
+                    defaultValue={item.rest_seconds ?? ''}
+                    onBlur={(e) => updateRestSeconds(item.id, e.target.value ? Number(e.target.value) : null)}
+                    className="w-16 rounded bg-zinc-800 px-2 py-1 outline-none"
                   />
                 </label>
               </div>
