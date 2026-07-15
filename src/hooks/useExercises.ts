@@ -52,5 +52,19 @@ export function useExercises() {
     setExercises((prev) => prev.filter((e) => e.id !== id))
   }
 
-  return { exercises, loading, error, addExercise, deleteExercise, refresh }
+  async function updateMuscleGroup(id: string, muscleGroup: string | null, muscleSubgroup: string | null) {
+    const { error } = await supabase
+      .from('exercises')
+      .update({ muscle_group: muscleGroup, muscle_subgroup: muscleSubgroup })
+      .eq('id', id)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setExercises((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, muscle_group: muscleGroup, muscle_subgroup: muscleSubgroup } : e))
+    )
+  }
+
+  return { exercises, loading, error, addExercise, deleteExercise, updateMuscleGroup, refresh }
 }

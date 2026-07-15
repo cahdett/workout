@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-
-interface RestTimerProps {
-  seconds: number
-  notify?: boolean
-  onDismiss: () => void
-}
+import { useRestTimer } from '../contexts/RestTimerContext'
 
 function beep() {
   try {
@@ -20,6 +15,7 @@ function beep() {
 }
 
 async function notifyRestDone() {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
   try {
     const registration = await navigator.serviceWorker.ready
     await registration.showNotification('Rest complete 💪', {
@@ -31,16 +27,19 @@ async function notifyRestDone() {
   }
 }
 
-export default function RestTimer({ seconds, notify, onDismiss }: RestTimerProps) {
-  // An absolute end time (not a pure countdown) so backgrounding/throttling
-  // on iOS can't desync the displayed remaining time.
-  const endAtRef = useRef(Date.now() + seconds * 1000)
-  const [remaining, setRemaining] = useState(seconds)
+export default function RestTimer() {
+  const { active, addTime, dismiss } = useRestTimer()
+  const [remaining, setRemaining] = useState(0)
   const firedRef = useRef(false)
 
   useEffect(() => {
+    firedRef.current = false
+  }, [active?.key])
+
+  useEffect(() => {
+    if (!active) return
     function tick() {
-      setRemaining(Math.max(0, Math.round((endAtRef.current - Date.now()) / 1000)))
+      setRemaining(Math.max(0, Math.round((active!.endAt - Date.now()) / 1000)))
     }
     tick()
     const id = setInterval(tick, 1000)
@@ -49,19 +48,16 @@ export default function RestTimer({ seconds, notify, onDismiss }: RestTimerProps
       clearInterval(id)
       document.removeEventListener('visibilitychange', tick)
     }
-  }, [])
+  }, [active])
 
   useEffect(() => {
-    if (remaining > 0 || firedRef.current) return
+    if (!active || remaining > 0 || firedRef.current) return
     firedRef.current = true
     beep()
-    if (notify) notifyRestDone()
-  }, [remaining, notify])
+    notifyRestDone()
+  }, [active, remaining])
 
-  function addTime(delta: number) {
-    endAtRef.current += delta * 1000
-    setRemaining((r) => Math.max(0, r + delta))
-  }
+  if (!active) return null
 
   const minutes = Math.floor(remaining / 60)
   const secs = remaining % 60
@@ -78,7 +74,7 @@ export default function RestTimer({ seconds, notify, onDismiss }: RestTimerProps
         <button onClick={() => addTime(15)} className="rounded-full bg-white/20 px-3 py-1 text-sm active:bg-white/30">
           +15s
         </button>
-        <button onClick={onDismiss} className="rounded-full bg-white/20 px-3 py-1 text-sm active:bg-white/30">
+        <button onClick={dismiss} className="rounded-full bg-white/20 px-3 py-1 text-sm active:bg-white/30">
           Skip
         </button>
       </div>

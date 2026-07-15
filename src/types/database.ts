@@ -2,6 +2,8 @@ export interface Exercise {
   id: string
   user_id: string
   name: string
+  muscle_group: string | null
+  muscle_subgroup: string | null
   created_at: string
 }
 

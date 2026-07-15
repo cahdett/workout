@@ -3,10 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../contexts/AuthContext'
 import { useExercises } from '../hooks/useExercises'
-import { epley1RM, fetchBestE1RM } from '../hooks/usePersonalRecords'
+import { useRestTimer } from '../contexts/RestTimerContext'
+import { epley1RM, fetchBestE1RM, fetchLastSessionSets, formatLastSession } from '../hooks/usePersonalRecords'
 import ExercisePicker from '../components/ExercisePicker'
 import SetRow from '../components/SetRow'
-import RestTimer from '../components/RestTimer'
 import type { Exercise, RoutineExerciseWithName, WorkoutSet } from '../types/database'
 
 const DEFAULT_REST_SECONDS = 90
@@ -32,6 +32,7 @@ interface SessionExercise {
   pendingRows: PendingRow[]
   bestE1RM: number
   restSeconds: number
+  lastSessionLabel: string | null
 }
 
 function newPendingRow(): PendingRow {
@@ -54,12 +55,12 @@ export default function ActiveWorkout() {
   const resumeWorkoutId = searchParams.get('workoutId') ?? undefined
 
   const { exercises, addExercise: createExercise } = useExercises()
+  const { start: startRestTimer } = useRestTimer()
 
   const [workoutId, setWorkoutId] = useState<string | null>(null)
   const [startedAt, setStartedAt] = useState<string | null>(null)
   const [sessionExercises, setSessionExercises] = useState<SessionExercise[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [restState, setRestState] = useState<{ key: number; seconds: number } | null>(null)
   const [notifStatus, setNotifStatus] = useState<NotificationPermission | 'unsupported'>(
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
   )
@@ -121,6 +122,7 @@ export default function ActiveWorkout() {
               pendingRows: [],
               bestE1RM: 0,
               restSeconds: DEFAULT_REST_SECONDS,
+              lastSessionLabel: null,
             })
         }
       } else {
@@ -158,6 +160,7 @@ export default function ActiveWorkout() {
               pendingRows: Array.from({ length: targetSlots }, () => newPendingRow()),
               bestE1RM: 0,
               restSeconds: item.rest_seconds ?? DEFAULT_REST_SECONDS,
+              lastSessionLabel: null,
             })
           }
         }
@@ -169,6 +172,10 @@ export default function ActiveWorkout() {
       initialExercises.forEach((ex) => {
         fetchBestE1RM(ex.exerciseId).then((best) => {
           setSessionExercises((prev) => prev.map((e) => (e.exerciseId === ex.exerciseId ? { ...e, bestE1RM: best } : e)))
+        })
+        fetchLastSessionSets(ex.exerciseId, workoutRow.id).then((sets) => {
+          const label = sets ? formatLastSession(sets) : null
+          setSessionExercises((prev) => prev.map((e) => (e.exerciseId === ex.exerciseId ? { ...e, lastSessionLabel: label } : e)))
         })
       })
     }
@@ -188,11 +195,15 @@ export default function ActiveWorkout() {
           pendingRows: [newPendingRow()],
           bestE1RM: 0,
           restSeconds: DEFAULT_REST_SECONDS,
+          lastSessionLabel: null,
         },
       ]
     })
     const best = await fetchBestE1RM(exercise.id)
     setSessionExercises((prev) => prev.map((e) => (e.exerciseId === exercise.id ? { ...e, bestE1RM: best } : e)))
+    const lastSets = await fetchLastSessionSets(exercise.id, workoutId ?? undefined)
+    const label = lastSets ? formatLastSession(lastSets) : null
+    setSessionExercises((prev) => prev.map((e) => (e.exerciseId === exercise.id ? { ...e, lastSessionLabel: label } : e)))
   }
 
   function updatePendingInput(exIdx: number, rowId: string, field: 'weightInput' | 'repsInput', value: string) {
@@ -242,7 +253,7 @@ export default function ActiveWorkout() {
           : e
       )
     )
-    setRestState({ key: Date.now(), seconds: ex.restSeconds })
+    startRestTimer(ex.restSeconds)
   }
 
   async function finishWorkout() {
@@ -292,7 +303,10 @@ export default function ActiveWorkout() {
         {sessionExercises.map((ex, idx) => (
           <div key={ex.exerciseId} className="rounded-lg bg-zinc-900/50 p-3">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="font-medium">{ex.name}</h2>
+              <div>
+                <h2 className="font-medium">{ex.name}</h2>
+                {ex.lastSessionLabel && <p className="text-xs text-zinc-500">{ex.lastSessionLabel}</p>}
+              </div>
               <label className="flex items-center gap-1 text-xs text-zinc-500">
                 Rest
                 <input
@@ -368,15 +382,6 @@ export default function ActiveWorkout() {
             addExerciseToSession(exercise)
             setPickerOpen(false)
           }}
-        />
-      )}
-
-      {restState && (
-        <RestTimer
-          key={restState.key}
-          seconds={restState.seconds}
-          notify={notifStatus === 'granted'}
-          onDismiss={() => setRestState(null)}
         />
       )}
     </div>
