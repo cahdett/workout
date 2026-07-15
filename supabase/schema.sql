@@ -46,7 +46,17 @@ create table if not exists workout_sets (
   created_at timestamptz not null default now()
 );
 
+create table if not exists body_weight_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  logged_date date not null,
+  weight numeric not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, logged_date)
+);
+
 create index if not exists idx_exercises_user on exercises(user_id);
+create index if not exists idx_body_weight_logs_user on body_weight_logs(user_id);
 create index if not exists idx_routines_user on routines(user_id);
 create index if not exists idx_routine_exercises_routine on routine_exercises(routine_id);
 create index if not exists idx_workouts_user on workouts(user_id);
@@ -58,6 +68,7 @@ alter table routines enable row level security;
 alter table routine_exercises enable row level security;
 alter table workouts enable row level security;
 alter table workout_sets enable row level security;
+alter table body_weight_logs enable row level security;
 
 -- exercises: owned directly by user_id
 create policy "exercises_select_own" on exercises for select using (auth.uid() = user_id);
@@ -96,3 +107,9 @@ create policy "workout_sets_update_own" on workout_sets for update
   using (exists (select 1 from workouts w where w.id = workout_id and w.user_id = auth.uid()));
 create policy "workout_sets_delete_own" on workout_sets for delete
   using (exists (select 1 from workouts w where w.id = workout_id and w.user_id = auth.uid()));
+
+-- body_weight_logs: owned directly by user_id
+create policy "body_weight_logs_select_own" on body_weight_logs for select using (auth.uid() = user_id);
+create policy "body_weight_logs_insert_own" on body_weight_logs for insert with check (auth.uid() = user_id);
+create policy "body_weight_logs_update_own" on body_weight_logs for update using (auth.uid() = user_id);
+create policy "body_weight_logs_delete_own" on body_weight_logs for delete using (auth.uid() = user_id);

@@ -46,3 +46,11 @@ export interface WorkoutSet {
   reps: number
   created_at: string
 }
+
+export interface BodyWeightLog {
+  id: string
+  user_id: string
+  logged_date: string
+  weight: number
+  created_at: string
+}

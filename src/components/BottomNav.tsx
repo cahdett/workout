@@ -5,6 +5,7 @@ const tabs = [
   { to: '/routines', label: 'Routines', icon: '📋' },
   { to: '/history', label: 'History', icon: '🕓' },
   { to: '/progress', label: 'Progress', icon: '📈' },
+  { to: '/weight', label: 'Weight', icon: '⚖️' },
   { to: '/exercises', label: 'Exercises', icon: '🏋️' },
 ]
 
