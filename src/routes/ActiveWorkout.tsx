@@ -53,6 +53,7 @@ export default function ActiveWorkout() {
   const [searchParams] = useSearchParams()
   const routineIdParam = searchParams.get('routineId') ?? undefined
   const resumeWorkoutId = searchParams.get('workoutId') ?? undefined
+  const repeatWorkoutId = searchParams.get('repeatWorkoutId') ?? undefined
 
   const { exercises, addExercise: createExercise } = useExercises()
   const { start: startRestTimer, dismiss: dismissRestTimer } = useRestTimer()
@@ -127,19 +128,57 @@ export default function ActiveWorkout() {
             })
         }
       } else {
+        let newRoutineId = routineIdParam ?? null
+        if (repeatWorkoutId) {
+          const { data: sourceWorkout } = await supabase
+            .from('workouts')
+            .select('routine_id')
+            .eq('id', repeatWorkoutId)
+            .single()
+          newRoutineId = sourceWorkout?.routine_id ?? null
+        }
+
         const { data } = await supabase
           .from('workouts')
-          .insert({ user_id: user!.id, routine_id: routineIdParam ?? null })
+          .insert({ user_id: user!.id, routine_id: newRoutineId })
           .select()
           .single()
         if (!data) return
         workoutRow = data
+
+        if (repeatWorkoutId) {
+          const { data: sourceSets } = await supabase
+            .from('workout_sets')
+            .select('*, exercise:exercises(id, name)')
+            .eq('workout_id', repeatWorkoutId)
+            .order('set_number', { ascending: true })
+
+          for (const srcRow of (sourceSets ?? []) as (WorkoutSet & { exercise: Pick<Exercise, 'id' | 'name'> })[]) {
+            const pendingRow: PendingRow = {
+              id: crypto.randomUUID(),
+              weightInput: String(Number(srcRow.weight)),
+              repsInput: String(Number(srcRow.reps)),
+            }
+            const existing = sessionMap.get(srcRow.exercise_id)
+            if (existing) existing.pendingRows.push(pendingRow)
+            else
+              sessionMap.set(srcRow.exercise_id, {
+                exerciseId: srcRow.exercise_id,
+                name: srcRow.exercise.name,
+                sets: [],
+                pendingRows: [pendingRow],
+                bestE1RM: 0,
+                restSeconds: DEFAULT_REST_SECONDS,
+                lastSessionLabel: null,
+              })
+          }
+        }
       }
 
       setWorkoutId(workoutRow.id)
       setStartedAt(workoutRow.started_at)
 
-      if (workoutRow.routine_id) {
+      if (workoutRow.routine_id && !repeatWorkoutId) {
         const { data: routineItems } = await supabase
           .from('routine_exercises')
           .select('*, exercise:exercises(id, name)')
@@ -182,7 +221,7 @@ export default function ActiveWorkout() {
     }
 
     init()
-  }, [user, resumeWorkoutId, routineIdParam, navigate])
+  }, [user, resumeWorkoutId, routineIdParam, repeatWorkoutId, navigate])
 
   async function addExerciseToSession(exercise: Pick<Exercise, 'id' | 'name'>) {
     setSessionExercises((prev) => {
@@ -254,6 +293,16 @@ export default function ActiveWorkout() {
     const lastSets = await fetchLastSessionSets(newExercise.id, workoutId ?? undefined)
     const label = lastSets ? formatLastSession(lastSets) : null
     setSessionExercises((prev) => prev.map((e, i) => (i === exIdx ? { ...e, lastSessionLabel: label } : e)))
+  }
+
+  function moveExercise(exIdx: number, direction: -1 | 1) {
+    setSessionExercises((prev) => {
+      const swapIdx = exIdx + direction
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev
+      const next = [...prev]
+      ;[next[exIdx], next[swapIdx]] = [next[swapIdx], next[exIdx]]
+      return next
+    })
   }
 
   function updatePendingInput(exIdx: number, rowId: string, field: 'weightInput' | 'repsInput', value: string) {
@@ -360,7 +409,21 @@ export default function ActiveWorkout() {
                 <h2 className="font-medium">{ex.name}</h2>
                 {ex.lastSessionLabel && <p className="text-xs text-zinc-500">{ex.lastSessionLabel}</p>}
               </div>
-              <div className="flex shrink-0 items-center gap-3">
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => moveExercise(idx, -1)}
+                  disabled={idx === 0}
+                  className="text-zinc-400 disabled:opacity-20"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={() => moveExercise(idx, 1)}
+                  disabled={idx === sessionExercises.length - 1}
+                  className="text-zinc-400 disabled:opacity-20"
+                >
+                  ↓
+                </button>
                 <button onClick={() => setPickerTarget(idx)} className="text-xs text-zinc-400">
                   ⇄ Swap
                 </button>
