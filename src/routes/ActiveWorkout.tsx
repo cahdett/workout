@@ -60,7 +60,8 @@ export default function ActiveWorkout() {
   const [workoutId, setWorkoutId] = useState<string | null>(null)
   const [startedAt, setStartedAt] = useState<string | null>(null)
   const [sessionExercises, setSessionExercises] = useState<SessionExercise[]>([])
-  const [pickerOpen, setPickerOpen] = useState(false)
+  // 'add' appends a new exercise; a number is the index of the exercise being swapped out.
+  const [pickerTarget, setPickerTarget] = useState<'add' | number | null>(null)
   const [notifStatus, setNotifStatus] = useState<NotificationPermission | 'unsupported'>(
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
   )
@@ -206,6 +207,55 @@ export default function ActiveWorkout() {
     setSessionExercises((prev) => prev.map((e) => (e.exerciseId === exercise.id ? { ...e, lastSessionLabel: label } : e)))
   }
 
+  async function removeExerciseFromSession(exIdx: number) {
+    const ex = sessionExercises[exIdx]
+    if (ex.sets.length > 0) {
+      if (!confirm(`Remove ${ex.name}? This deletes the ${ex.sets.length} set(s) already logged for it.`)) return
+      if (workoutId) {
+        await supabase.from('workout_sets').delete().eq('workout_id', workoutId).eq('exercise_id', ex.exerciseId)
+      }
+    }
+    setSessionExercises((prev) => prev.filter((_, i) => i !== exIdx))
+  }
+
+  async function swapExercise(exIdx: number, newExercise: Pick<Exercise, 'id' | 'name'>) {
+    const old = sessionExercises[exIdx]
+    if (sessionExercises.some((e, i) => i !== exIdx && e.exerciseId === newExercise.id)) {
+      alert(`${newExercise.name} is already in this workout.`)
+      return
+    }
+    if (old.sets.length > 0) {
+      if (!confirm(`Swap ${old.name} for ${newExercise.name}? This deletes the ${old.sets.length} set(s) already logged for ${old.name}.`))
+        return
+      if (workoutId) {
+        await supabase.from('workout_sets').delete().eq('workout_id', workoutId).eq('exercise_id', old.exerciseId)
+      }
+    }
+
+    const preservedSlots = Math.max(old.pendingRows.length, 1)
+    setSessionExercises((prev) =>
+      prev.map((e, i) =>
+        i === exIdx
+          ? {
+              exerciseId: newExercise.id,
+              name: newExercise.name,
+              sets: [],
+              pendingRows: Array.from({ length: preservedSlots }, () => newPendingRow()),
+              bestE1RM: 0,
+              restSeconds: old.restSeconds,
+              lastSessionLabel: null,
+            }
+          : e
+      )
+    )
+
+    const best = await fetchBestE1RM(newExercise.id)
+    setSessionExercises((prev) => prev.map((e, i) => (i === exIdx ? { ...e, bestE1RM: best } : e)))
+    const lastSets = await fetchLastSessionSets(newExercise.id, workoutId ?? undefined)
+    const label = lastSets ? formatLastSession(lastSets) : null
+    setSessionExercises((prev) => prev.map((e, i) => (i === exIdx ? { ...e, lastSessionLabel: label } : e)))
+  }
+
   function updatePendingInput(exIdx: number, rowId: string, field: 'weightInput' | 'repsInput', value: string) {
     setSessionExercises((prev) =>
       prev.map((e, i) =>
@@ -302,11 +352,22 @@ export default function ActiveWorkout() {
       <div className="mt-3 space-y-4">
         {sessionExercises.map((ex, idx) => (
           <div key={ex.exerciseId} className="rounded-lg bg-zinc-900/50 p-3">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-start justify-between gap-2">
               <div>
                 <h2 className="font-medium">{ex.name}</h2>
                 {ex.lastSessionLabel && <p className="text-xs text-zinc-500">{ex.lastSessionLabel}</p>}
               </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <button onClick={() => setPickerTarget(idx)} className="text-xs text-zinc-400">
+                  ⇄ Swap
+                </button>
+                <button onClick={() => removeExerciseFromSession(idx)} className="text-xs text-red-400">
+                  Remove
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-2 flex justify-end">
               <label className="flex items-center gap-1 text-xs text-zinc-500">
                 Rest
                 <input
@@ -367,20 +428,21 @@ export default function ActiveWorkout() {
       </div>
 
       <button
-        onClick={() => setPickerOpen(true)}
+        onClick={() => setPickerTarget('add')}
         className="mt-4 w-full rounded-lg border border-dashed border-zinc-700 py-3 text-zinc-400"
       >
         + Add Exercise
       </button>
 
-      {pickerOpen && (
+      {pickerTarget !== null && (
         <ExercisePicker
           exercises={exercises}
           onCreate={createExercise}
-          onClose={() => setPickerOpen(false)}
+          onClose={() => setPickerTarget(null)}
           onSelect={(exercise) => {
-            addExerciseToSession(exercise)
-            setPickerOpen(false)
+            if (pickerTarget === 'add') addExerciseToSession(exercise)
+            else swapExercise(pickerTarget, exercise)
+            setPickerTarget(null)
           }}
         />
       )}
