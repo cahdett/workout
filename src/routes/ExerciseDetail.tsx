@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useExercises } from '../hooks/useExercises'
 import { useExerciseProgress } from '../hooks/useExerciseProgress'
 import { epley1RM } from '../hooks/usePersonalRecords'
@@ -21,6 +21,16 @@ export default function ExerciseDetail() {
     if (isPR) runningMax = e1rm
     return { ...s, isPR }
   })
+
+  const sessions = new Map<string, { date: string; sets: typeof setsWithPR }>()
+  for (const s of setsWithPR) {
+    const existing = sessions.get(s.workout_id)
+    if (existing) existing.sets.push(s)
+    else sessions.set(s.workout_id, { date: s.workoutStartedAt, sets: [s] })
+  }
+  const sessionList = Array.from(sessions.entries())
+    .map(([workoutId, session]) => ({ workoutId, ...session }))
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <div className="px-4 pb-24 pt-[calc(1rem+var(--safe-top))]">
@@ -47,9 +57,22 @@ export default function ExerciseDetail() {
       )}
 
       <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-zinc-500">History</h2>
-      <div className="space-y-1">
-        {[...setsWithPR].reverse().map((s) => (
-          <SetRow key={s.id} setNumber={s.set_number} weight={s.weight} reps={s.reps} isPR={s.isPR} />
+      <div className="space-y-4">
+        {sessionList.map((session) => (
+          <div key={session.workoutId}>
+            <Link to={`/history/${session.workoutId}`} className="mb-1 block text-sm text-zinc-400">
+              {new Date(session.date).toLocaleDateString(undefined, {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </Link>
+            <div className="space-y-1">
+              {session.sets.map((s) => (
+                <SetRow key={s.id} setNumber={s.set_number} weight={s.weight} reps={s.reps} isPR={s.isPR} />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>

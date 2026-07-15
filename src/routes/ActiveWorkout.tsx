@@ -55,7 +55,7 @@ export default function ActiveWorkout() {
   const resumeWorkoutId = searchParams.get('workoutId') ?? undefined
 
   const { exercises, addExercise: createExercise } = useExercises()
-  const { start: startRestTimer } = useRestTimer()
+  const { start: startRestTimer, dismiss: dismissRestTimer } = useRestTimer()
 
   const [workoutId, setWorkoutId] = useState<string | null>(null)
   const [startedAt, setStartedAt] = useState<string | null>(null)
@@ -310,6 +310,7 @@ export default function ActiveWorkout() {
     if (workoutId) {
       await supabase.from('workouts').update({ ended_at: new Date().toISOString() }).eq('id', workoutId)
     }
+    dismissRestTimer()
     navigate('/history')
   }
 
@@ -319,8 +320,10 @@ export default function ActiveWorkout() {
       if (isEmpty) {
         // Nothing was ever logged — clean up rather than leaving a phantom in-progress workout.
         await supabase.from('workouts').delete().eq('id', workoutId)
+        dismissRestTimer()
       }
-      // Otherwise leave ended_at untouched so the workout stays resumable from Home.
+      // Otherwise leave ended_at untouched so the workout stays resumable from Home,
+      // and leave the rest timer running since the workout is still in progress.
     }
     navigate('/')
   }

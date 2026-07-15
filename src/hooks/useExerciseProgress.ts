@@ -10,7 +10,13 @@ export interface ProgressPoint {
   bestE1RM: number
 }
 
-export async function fetchExerciseProgress(exerciseId: string): Promise<{ points: ProgressPoint[]; allSets: WorkoutSet[] }> {
+export interface WorkoutSetWithDate extends WorkoutSet {
+  workoutStartedAt: string
+}
+
+export async function fetchExerciseProgress(
+  exerciseId: string
+): Promise<{ points: ProgressPoint[]; allSets: WorkoutSetWithDate[] }> {
   const { data } = await supabase
     .from('workout_sets')
     .select('*, workout:workouts(started_at)')
@@ -35,13 +41,18 @@ export async function fetchExerciseProgress(exerciseId: string): Promise<{ point
   }
 
   const points = Array.from(byWorkout.values()).sort((a, b) => a.date.localeCompare(b.date))
-  const allSets = rows.map((r) => ({ ...r, weight: Number(r.weight), reps: Number(r.reps) }))
+  const allSets = rows.map((r) => ({
+    ...r,
+    weight: Number(r.weight),
+    reps: Number(r.reps),
+    workoutStartedAt: r.workout?.started_at ?? r.created_at,
+  }))
   return { points, allSets }
 }
 
 export function useExerciseProgress(exerciseId: string | undefined) {
   const [points, setPoints] = useState<ProgressPoint[]>([])
-  const [allSets, setAllSets] = useState<WorkoutSet[]>([])
+  const [allSets, setAllSets] = useState<WorkoutSetWithDate[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
