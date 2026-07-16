@@ -24,7 +24,7 @@ export interface WeeklyNutritionAverage {
 }
 
 function scaledMacros(log: FoodLogWithFood) {
-  const ratio = log.grams / log.food.serving_size
+  const ratio = log.amount / log.food.serving_size
   return {
     calories: log.food.calories * ratio,
     protein: log.food.protein * ratio,
@@ -91,7 +91,7 @@ export function useNutrition() {
     setLoading(true)
     const { data, error } = await supabase
       .from('food_logs')
-      .select('*, food:foods(id, name, serving_size, calories, protein, carbs, fat)')
+      .select('*, food:foods(id, name, serving_size, unit_label, calories, protein, carbs, fat)')
       .order('logged_date', { ascending: true })
     if (error) setError(error.message)
     else setLogs((data ?? []) as FoodLogWithFood[])
@@ -102,12 +102,12 @@ export function useNutrition() {
     refresh()
   }, [refresh])
 
-  async function logFood(foodId: string, grams: number, date: string): Promise<boolean> {
+  async function logFood(foodId: string, amount: number, date: string): Promise<boolean> {
     if (!user) return false
     const { data, error } = await supabase
       .from('food_logs')
-      .insert({ user_id: user.id, food_id: foodId, logged_date: date, grams })
-      .select('*, food:foods(id, name, serving_size, calories, protein, carbs, fat)')
+      .insert({ user_id: user.id, food_id: foodId, logged_date: date, amount })
+      .select('*, food:foods(id, name, serving_size, unit_label, calories, protein, carbs, fat)')
       .single()
     if (error || !data) {
       setError(error?.message ?? 'Failed to log food')

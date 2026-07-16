@@ -60,7 +60,7 @@ export interface Food {
   user_id: string
   name: string
   serving_size: number
-  serving_label: string | null
+  unit_label: string | null
   calories: number
   protein: number
   carbs: number
@@ -73,10 +73,10 @@ export interface FoodLog {
   user_id: string
   food_id: string
   logged_date: string
-  grams: number
+  amount: number
   created_at: string
 }
 
 export interface FoodLogWithFood extends FoodLog {
-  food: Pick<Food, 'id' | 'name' | 'serving_size' | 'calories' | 'protein' | 'carbs' | 'fat'>
+  food: Pick<Food, 'id' | 'name' | 'serving_size' | 'unit_label' | 'calories' | 'protein' | 'carbs' | 'fat'>
 }

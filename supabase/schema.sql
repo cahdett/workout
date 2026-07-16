@@ -66,7 +66,7 @@ create table if not exists foods (
   user_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
   serving_size numeric not null,
-  serving_label text,
+  unit_label text, -- e.g. 'rice cake', 'pouch'; when set, macros are per 1 unit and logs are counted, not weighed
   calories numeric not null default 0,
   protein numeric not null default 0,
   carbs numeric not null default 0,
@@ -79,9 +79,20 @@ create table if not exists food_logs (
   user_id uuid not null references auth.users(id) on delete cascade,
   food_id uuid not null references foods(id) on delete cascade,
   logged_date date not null,
-  grams numeric not null,
+  amount numeric not null, -- grams if the food is weighed, otherwise a unit count
   created_at timestamptz not null default now()
 );
+
+-- Migration for databases that already had the old columns (safe to run repeatedly).
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_name = 'foods' and column_name = 'serving_label') then
+    alter table foods rename column serving_label to unit_label;
+  end if;
+  if exists (select 1 from information_schema.columns where table_name = 'food_logs' and column_name = 'grams') then
+    alter table food_logs rename column grams to amount;
+  end if;
+end $$;
 
 create index if not exists idx_exercises_user on exercises(user_id);
 create index if not exists idx_body_weight_logs_user on body_weight_logs(user_id);

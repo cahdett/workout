@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 export interface FoodInput {
   name: string
   servingSize: number
-  servingLabel: string | null
+  unitLabel: string | null
   calories: number
   protein: number
   carbs: number
@@ -40,7 +40,7 @@ export function useFoods() {
         user_id: user.id,
         name: input.name.trim(),
         serving_size: input.servingSize,
-        serving_label: input.servingLabel,
+        unit_label: input.unitLabel,
         calories: input.calories,
         protein: input.protein,
         carbs: input.carbs,

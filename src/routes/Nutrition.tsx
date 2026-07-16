@@ -10,24 +10,31 @@ function formatWeekRange(weekStart: string, weekEnd: string): string {
   return `${start} – ${end}`
 }
 
+function formatAmount(amount: number, unitLabel: string | null): string {
+  if (!unitLabel) return `${amount}g`
+  const label = amount === 1 || unitLabel.endsWith('s') ? unitLabel : `${unitLabel}s`
+  return `${amount} ${label}`
+}
+
 export default function Nutrition() {
   const { foods, loading: foodsLoading } = useFoods()
   const { loading, logFood, deleteLog, logsForDate, totalsForDate, weeklyAverages } = useNutrition()
   const [date, setDate] = useState(todayLocalDateString())
   const [foodId, setFoodId] = useState('')
-  const [grams, setGrams] = useState('')
+  const [amount, setAmount] = useState('')
   const [saving, setSaving] = useState(false)
 
   const dayLogs = logsForDate(date)
   const totals = totalsForDate(date)
+  const selectedFood = foods.find((f) => f.id === foodId) ?? null
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    const parsedGrams = Number(grams)
-    if (!foodId || !grams.trim() || Number.isNaN(parsedGrams) || parsedGrams <= 0 || saving) return
+    const parsedAmount = Number(amount)
+    if (!foodId || !amount.trim() || Number.isNaN(parsedAmount) || parsedAmount <= 0 || saving) return
     setSaving(true)
-    await logFood(foodId, parsedGrams, date)
-    setGrams('')
+    await logFood(foodId, parsedAmount, date)
+    setAmount('')
     setSaving(false)
   }
 
@@ -74,15 +81,15 @@ export default function Nutrition() {
             <input
               type="number"
               inputMode="decimal"
-              step="1"
-              value={grams}
-              onChange={(e) => setGrams(e.target.value)}
-              placeholder="Grams"
-              className="w-24 rounded-lg bg-zinc-900 px-3 py-3 outline-none placeholder:text-zinc-500"
+              step={selectedFood?.unit_label ? '0.5' : '1'}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder={selectedFood?.unit_label ? formatAmount(2, selectedFood.unit_label) : 'Grams'}
+              className="w-28 rounded-lg bg-zinc-900 px-3 py-3 outline-none placeholder:text-zinc-500"
             />
             <button
               type="submit"
-              disabled={saving || !foodId || !grams.trim()}
+              disabled={saving || !foodId || !amount.trim()}
               className="rounded-lg bg-indigo-600 px-4 py-3 font-medium disabled:opacity-40"
             >
               Add
@@ -117,7 +124,8 @@ export default function Nutrition() {
               <div>
                 <p>{log.food.name}</p>
                 <p className="text-sm text-zinc-500">
-                  {log.grams}g · {Math.round((log.food.calories * log.grams) / log.food.serving_size)} cal
+                  {formatAmount(log.amount, log.food.unit_label)} ·{' '}
+                  {Math.round((log.food.calories * log.amount) / log.food.serving_size)} cal
                 </p>
               </div>
               <button onClick={() => deleteLog(log.id)} className="text-sm text-red-400">
