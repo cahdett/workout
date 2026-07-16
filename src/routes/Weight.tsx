@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { parseLocalDate, todayLocalDateString, useBodyWeight } from '../hooks/useBodyWeight'
+import { parseLocalDate, todayLocalDateString } from '../lib/date'
+import { useBodyWeight } from '../hooks/useBodyWeight'
+import { useGoalWeight } from '../hooks/useGoalWeight'
 import WeightChart from '../components/WeightChart'
 
 function formatWeekRange(weekStart: string, weekEnd: string): string {
@@ -10,15 +12,22 @@ function formatWeekRange(weekStart: string, weekEnd: string): string {
 
 export default function Weight() {
   const { logs, loading, logWeight, deleteLog, weeklyAverages } = useBodyWeight()
+  const { goalWeight, saveGoalWeight } = useGoalWeight()
   const [date, setDate] = useState(todayLocalDateString())
   const [weight, setWeight] = useState('')
   const [saving, setSaving] = useState(false)
+  const [goalInput, setGoalInput] = useState('')
+  const [editingGoal, setEditingGoal] = useState(false)
 
   const existingForDate = logs.find((l) => l.logged_date === date)
 
   useEffect(() => {
     setWeight(existingForDate ? String(existingForDate.weight) : '')
   }, [date, existingForDate])
+
+  useEffect(() => {
+    setGoalInput(goalWeight != null ? String(goalWeight) : '')
+  }, [goalWeight])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -29,11 +38,62 @@ export default function Weight() {
     setSaving(false)
   }
 
+  async function handleSaveGoal(e: React.FormEvent) {
+    e.preventDefault()
+    const parsed = Number(goalInput)
+    if (!goalInput.trim() || Number.isNaN(parsed) || parsed <= 0) return
+    await saveGoalWeight(parsed)
+    setEditingGoal(false)
+  }
+
+  const latestWeight = logs.length > 0 ? Number(logs[logs.length - 1].weight) : null
+  const toGoal = latestWeight != null && goalWeight != null ? latestWeight - goalWeight : null
+
   const recentLogs = [...logs].reverse().slice(0, 14)
 
   return (
     <div className="px-4 pb-24 pt-[calc(1rem+var(--safe-top))]">
       <h1 className="mb-4 text-2xl font-semibold">Weight</h1>
+
+      <div className="mb-6 rounded-lg bg-zinc-900/50 p-4">
+        {editingGoal || goalWeight == null ? (
+          <form onSubmit={handleSaveGoal} className="flex gap-2">
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              value={goalInput}
+              onChange={(e) => setGoalInput(e.target.value)}
+              placeholder="Goal weight (lb)"
+              className="flex-1 rounded-lg bg-zinc-900 px-4 py-3 outline-none placeholder:text-zinc-500"
+            />
+            <button
+              type="submit"
+              disabled={!goalInput.trim()}
+              className="rounded-lg bg-indigo-600 px-4 py-3 font-medium disabled:opacity-40"
+            >
+              Set
+            </button>
+          </form>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-zinc-500">Goal weight</p>
+              <p className="font-medium">
+                {goalWeight} lb
+                {toGoal !== null && (
+                  <span className="ml-2 text-sm text-zinc-500">
+                    ({Math.abs(toGoal).toFixed(1)} lb {toGoal > 0 ? 'to lose' : toGoal < 0 ? 'to gain' : 'away'})
+                  </span>
+                )}
+              </p>
+            </div>
+            <button onClick={() => setEditingGoal(true)} className="text-sm text-indigo-400">
+              Edit
+            </button>
+          </div>
+        )}
+      </div>
 
       <form onSubmit={handleSave} className="mb-6 space-y-2 rounded-lg bg-zinc-900/50 p-4">
         <div className="flex gap-2">
@@ -71,7 +131,7 @@ export default function Weight() {
         <>
           <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-zinc-500">Weekly Trend</h2>
           <div className="mb-6 rounded-lg bg-zinc-900/50 p-3">
-            <WeightChart data={weeklyAverages} />
+            <WeightChart data={weeklyAverages} goalWeight={goalWeight} />
           </div>
 
           <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-zinc-500">Weekly Averages</h2>

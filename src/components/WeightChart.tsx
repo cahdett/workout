@@ -1,11 +1,13 @@
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { parseLocalDate, type WeeklyAverage } from '../hooks/useBodyWeight'
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { parseLocalDate } from '../lib/date'
+import type { WeeklyAverage } from '../hooks/useBodyWeight'
 
 interface WeightChartProps {
   data: WeeklyAverage[]
+  goalWeight?: number | null
 }
 
-export default function WeightChart({ data }: WeightChartProps) {
+export default function WeightChart({ data, goalWeight }: WeightChartProps) {
   const formatted = [...data]
     .reverse()
     .map((w) => ({
@@ -31,7 +33,11 @@ export default function WeightChart({ data }: WeightChartProps) {
             axisLine={{ stroke: '#383835' }}
             tickLine={false}
             width={40}
-            domain={['dataMin - 2', 'dataMax + 2']}
+            domain={
+              goalWeight
+                ? [(dataMin: number) => Math.min(dataMin - 2, goalWeight - 2), (dataMax: number) => Math.max(dataMax + 2, goalWeight + 2)]
+                : ['dataMin - 2', 'dataMax + 2']
+            }
           />
           <Tooltip
             contentStyle={{
@@ -43,6 +49,14 @@ export default function WeightChart({ data }: WeightChartProps) {
             labelStyle={{ color: '#c3c2b7' }}
             formatter={(value) => [`${Number(value).toFixed(1)} lb`, 'Weekly avg']}
           />
+          {goalWeight != null && (
+            <ReferenceLine
+              y={goalWeight}
+              stroke="#4ade80"
+              strokeDasharray="4 4"
+              label={{ value: `Goal ${goalWeight} lb`, fill: '#4ade80', fontSize: 12, position: 'insideTopRight' }}
+            />
+          )}
           <Line
             type="monotone"
             dataKey="average"

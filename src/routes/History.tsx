@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useWorkoutHistory } from '../hooks/useWorkoutHistory'
+import WorkoutHeatmap from '../components/WorkoutHeatmap'
+import { uniqueLocalDates } from '../lib/date'
 
 export default function History() {
   const { workouts, loading, deleteWorkout } = useWorkoutHistory()
@@ -7,6 +9,12 @@ export default function History() {
   return (
     <div className="px-4 pb-24 pt-[calc(1rem+var(--safe-top))]">
       <h1 className="mb-4 text-2xl font-semibold">History</h1>
+
+      {!loading && workouts.length > 0 && (
+        <div className="mb-6 rounded-lg bg-zinc-900/50 p-3">
+          <WorkoutHeatmap workoutDates={uniqueLocalDates(workouts.map((w) => w.started_at))} />
+        </div>
+      )}
 
       {loading ? (
         <p className="text-zinc-500">Loading…</p>

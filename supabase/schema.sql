@@ -55,8 +55,39 @@ create table if not exists body_weight_logs (
   unique (user_id, logged_date)
 );
 
+create table if not exists user_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  goal_weight numeric,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists foods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  serving_size numeric not null,
+  serving_label text,
+  calories numeric not null default 0,
+  protein numeric not null default 0,
+  carbs numeric not null default 0,
+  fat numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists food_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  food_id uuid not null references foods(id) on delete cascade,
+  logged_date date not null,
+  grams numeric not null,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_exercises_user on exercises(user_id);
 create index if not exists idx_body_weight_logs_user on body_weight_logs(user_id);
+create index if not exists idx_foods_user on foods(user_id);
+create index if not exists idx_food_logs_user on food_logs(user_id);
+create index if not exists idx_food_logs_date on food_logs(logged_date);
 create index if not exists idx_routines_user on routines(user_id);
 create index if not exists idx_routine_exercises_routine on routine_exercises(routine_id);
 create index if not exists idx_workouts_user on workouts(user_id);
@@ -69,6 +100,9 @@ alter table routine_exercises enable row level security;
 alter table workouts enable row level security;
 alter table workout_sets enable row level security;
 alter table body_weight_logs enable row level security;
+alter table user_settings enable row level security;
+alter table foods enable row level security;
+alter table food_logs enable row level security;
 
 -- exercises: owned directly by user_id
 create policy "exercises_select_own" on exercises for select using (auth.uid() = user_id);
@@ -113,3 +147,21 @@ create policy "body_weight_logs_select_own" on body_weight_logs for select using
 create policy "body_weight_logs_insert_own" on body_weight_logs for insert with check (auth.uid() = user_id);
 create policy "body_weight_logs_update_own" on body_weight_logs for update using (auth.uid() = user_id);
 create policy "body_weight_logs_delete_own" on body_weight_logs for delete using (auth.uid() = user_id);
+
+-- user_settings: owned directly by user_id
+create policy "user_settings_select_own" on user_settings for select using (auth.uid() = user_id);
+create policy "user_settings_insert_own" on user_settings for insert with check (auth.uid() = user_id);
+create policy "user_settings_update_own" on user_settings for update using (auth.uid() = user_id);
+create policy "user_settings_delete_own" on user_settings for delete using (auth.uid() = user_id);
+
+-- foods: owned directly by user_id
+create policy "foods_select_own" on foods for select using (auth.uid() = user_id);
+create policy "foods_insert_own" on foods for insert with check (auth.uid() = user_id);
+create policy "foods_update_own" on foods for update using (auth.uid() = user_id);
+create policy "foods_delete_own" on foods for delete using (auth.uid() = user_id);
+
+-- food_logs: owned directly by user_id
+create policy "food_logs_select_own" on food_logs for select using (auth.uid() = user_id);
+create policy "food_logs_insert_own" on food_logs for insert with check (auth.uid() = user_id);
+create policy "food_logs_update_own" on food_logs for update using (auth.uid() = user_id);
+create policy "food_logs_delete_own" on food_logs for delete using (auth.uid() = user_id);

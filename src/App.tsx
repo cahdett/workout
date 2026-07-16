@@ -14,6 +14,8 @@ import WorkoutDetail from './routes/WorkoutDetail'
 import Exercises from './routes/Exercises'
 import Progression from './routes/Progression'
 import Weight from './routes/Weight'
+import Nutrition from './routes/Nutrition'
+import NutritionFoods from './routes/NutritionFoods'
 
 // Lazy-loaded because it pulls in recharts, the heaviest dependency in the bundle.
 const ExerciseDetail = lazy(() => import('./routes/ExerciseDetail'))
@@ -52,6 +54,8 @@ function AppShell() {
         <Route path="/exercises" element={<Exercises />} />
         <Route path="/progress" element={<Progression />} />
         <Route path="/weight" element={<Weight />} />
+        <Route path="/nutrition" element={<Nutrition />} />
+        <Route path="/nutrition/foods" element={<NutritionFoods />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <RestTimer />

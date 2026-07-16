@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { addDays, startOfWeek, todayLocalDateString } from '../lib/date'
 import { useAuth } from '../contexts/AuthContext'
 import type { BodyWeightLog } from '../types/database'
 
@@ -9,37 +10,6 @@ export interface WeeklyAverage {
   average: number
   count: number
   deltaFromPrevWeek: number | null
-}
-
-function toLocalDateString(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-export function todayLocalDateString(): string {
-  return toLocalDateString(new Date())
-}
-
-export function parseLocalDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-function addDays(dateStr: string, days: number): string {
-  const date = parseLocalDate(dateStr)
-  date.setDate(date.getDate() + days)
-  return toLocalDateString(date)
-}
-
-// Weeks run Monday–Sunday.
-function startOfWeek(dateStr: string): string {
-  const date = parseLocalDate(dateStr)
-  const day = date.getDay()
-  const diffToMonday = day === 0 ? -6 : 1 - day
-  date.setDate(date.getDate() + diffToMonday)
-  return toLocalDateString(date)
 }
 
 function computeWeeklyAverages(logs: BodyWeightLog[]): WeeklyAverage[] {
